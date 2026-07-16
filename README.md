@@ -7,7 +7,7 @@ Smart Clock Assistant — это интерактивный веб-помощн�
 
 ---
 <a href="https://github.com/user-attachments/assets/fbb03236-8f60-44d2-8eb1-48a8f94618fb" target="_blank">
-  <img src="https://github.com/user-attachments/assets/fbb03236-8f60-44d2-8eb1-48a8f94618fb" alt="Gallery Preview" width="50%" />
+  <img src="https://github.com/user-attachments/assets/fbb03236-8f60-44d2-8eb1-48a8f94618fb" alt="Gallery Preview" width="25%" />
 </a>
 
 ## Основные возможности
