@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeAssistant Pro v2.5 — Профессиональный визуализатор времени</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+
+        :root {
+            --bg-gradient: linear-gradient(135deg, #eef2f3 0%, #8e9eab 100%);
+            --panel-bg: rgba(255, 255, 255, 0.96);
+            --primary: #2c3e50;
+            --primary-light: #34495e;
+            --accent: #2980b9;
+            --accent-hover: #3498db;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --text-main: #2c3e50;
+            --text-muted: #7f8c8d;
+            --border-color: #cfd8dc;
+            --shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            --radius-lg: 20px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 30px;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 992px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        h2 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+            padding-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* --- Clocks and visual --- */
+        .clock-workspace {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.02);
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            border: 1px dashed rgba(0, 0, 0, 0.08);
+        }
+
+        .clocks-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .analog-clock {
+            width: 300px;
+            height: 300px;
+            border: 10px solid var(--primary);
+            border-radius: 50%;
+            position: relative;
+            background: #ffffff;
+            box-shadow: inset 0 0 25px rgba(0,0,0,0.06), 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .clock-face {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hour-marker {
+            position: absolute;
+            width: 3px;
+            height: 8px;
+            background: var(--text-muted);
+            left: calc(50% - 1.5px);
+            transform-origin: 1.5px 140px;
+            opacity: 0.5;
+        }
+
+        .hour-marker.major {
+            width: 5px;
+            height: 16px;
+            background: var(--primary);
+            left: calc(50% - 2.5px);
+            transform-origin: 2.5px 140px;
+            opacity: 1;
+        }
+
+        .clock-number {
+            position: absolute;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--primary);
+            width: 30px;
+            height: 30px;
+            text-align: center;
+            line-height: 30px;
+        }
+
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            border-radius: 10px;
+            transition: transform 0.1s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+
+        .hour-hand {
+            width: 8px;
+            height: 75px;
+            margin-left: -4px;
+            background: var(--primary);
+            z-index: 3;
+        }
+
+        .minute-hand {
+            width: 5px;
+            height: 110px;
+            margin-left: -2.5px;
+            background: var(--accent);
+            z-index: 2;
+        }
+
+        .second-hand {
+            width: 2px;
+            height: 125px;
+            margin-left: -1px;
+            background: var(--danger);
+            z-index: 1;
+            display: none;
+        }
+
+        .clock-center-pin {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 14px;
+            height: 14px;
+            margin-left: -7px;
+            margin-top: -7px;
+            background: var(--danger);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        .digital-display {
+            font-family: 'Orbitron', 'Courier New', monospace;
+            background: #0f1411;
+            color: #39ff14;
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            box-shadow: inset 0 3px 15px rgba(0,0,0,0.8), 0 0 10px rgba(57, 255, 20, 0.3);
+            border: 2px solid #222;
+            text-align: center;
+            min-width: 200px;
+            text-shadow: 0 0 8px rgba(57, 255, 20, 0.6);
+        }
+
+        /* Enter promt field and save button */
+        .inputs-block-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.03);
+            padding: 20px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .inputs-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .time-input-field {
+            width: 80px;
+            height: 52px;
+            font-size: 1.7rem;
+            font-weight: 800;
+            text-align: center;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--primary);
+            background: #fff;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .time-input-field:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(41, 128, 185, 0.15);
+        }
+
+        .time-separator {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        /* presets and edit */
+        .presets-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .presets-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+            gap: 10px;
+            width: 100%;
+        }
+
+        .btn {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            color: var(--primary);
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+        }
+
+        .btn-accent:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Custom templates */
+        .saved-template-pill {
+            position: relative;
+            background: #fff;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            padding: 4px 8px;
+        }
+
+        .saved-template-pill.filled {
+            border-style: solid;
+            border-color: var(--accent);
+            background: rgba(41, 128, 185, 0.03);
+        }
+
+        .saved-template-pill .time-click-zone {
+            flex: 1;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--primary);
+            cursor: pointer;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .saved-template-pill .empty-placeholder {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+
+        .saved-template-pill .edit-pencil-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .saved-template-pill .edit-pencil-btn:hover {
+            color: var(--accent);
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Editable fields */
+        .pill-edit-input {
+            width: 100%;
+            height: 32px;
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            text-align: center;
+            font-weight: 700;
+            font-family: monospace;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        /* Extra analytics */
+        .info-panel {
+            background: #fdfefe;
+            border-left: 5px solid var(--accent);
+            padding: 20px;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border-top: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed rgba(0,0,0,0.06);
+            padding-bottom: 8px;
+        }
+
+        .info-row:last-child {
+            border: none;
+            padding: 0;
+        }
+
+        /* --- Calc Main --- */
+        .calc-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 576px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-block label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--primary-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .styled-input {
+            height: 46px;
+            padding: 0 12px;
+            font-size: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            outline: none;
+            transition: all 0.2s;
+            color: var(--primary);
+            background: #fff;
+        }
+
+        .styled-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(41, 128, 185, 0.15);
+        }
+
+        .input-with-action {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-with-action .styled-input {
+            flex: 1;
+        }
+
+        .output-box {
+            background: #eef9ff;
+            border: 1px solid #bee3f8;
+            border-radius: var(--radius-md);
+            padding: 16px;
+            color: #2b6cb0;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            line-height: 1.5;
+        }
+
+        .output-box.success {
+            background: #f0fff4;
+            border-color: #c6f6d5;
+            color: #22543d;
+        }
+
+        .output-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+
+        .output-value-large {
+            font-size: 1.6rem;
+            font-family: "Consolas", monospace;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: var(--primary);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--primary-light);
+            user-select: none;
+            font-weight: 600;
+        }
+
+        /* --- footer --- */
+        footer {
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 20px;
+            padding: 20px 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .footer-content {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .footer-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: color 0.2s;
+        }
+
+        .footer-link:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        .footer-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <div class="card">
+        <h2>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Визуализация времени
+        </h2>
+
+        <div class="clock-workspace">
+            <div class="clocks-display">
+                <div class="analog-clock" id="clock">
+                    <div class="clock-face" id="clock-face">
+                        <div id="hour-hand" class="hand hour-hand"></div>
+                        <div id="minute-hand" class="hand minute-hand"></div>
+                        <div id="second-hand" class="hand second-hand"></div>
+                        <div class="clock-center-pin"></div>
+                    </div>
+                </div>
+                <div class="digital-display" id="digital-clock">12:00:00</div>
+            </div>
+        </div>
+
+        <div class="inputs-block-wrapper">
+            <div class="inputs-row">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">ЧАСЫ</span>
+                    <input type="number" id="in-hours" class="time-input-field" min="0" max="23" placeholder="ЧЧ" value="12">
+                </div>
+                <span class="time-separator" style="margin-top: 15px;">:</span>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">МИНУТЫ</span>
+                    <input type="number" id="in-minutes" class="time-input-field" min="0" max="59" placeholder="ММ" value="00">
+                </div>
+                <span class="time-separator" style="margin-top: 15px;">:</span>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <span style="font-size: 0.75rem; font-weight: bold; color: var(--text-muted);">СЕКУНДЫ</span>
+                    <input type="number" id="in-seconds" class="time-input-field" min="0" max="59" placeholder="СС" value="00">
+                </div>
+            </div>
+            
+            <button class="btn btn-accent" onclick="saveToFirstAvailableSlot()" style="width: 100%; height: 40px; margin-top: 5px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                + сохранить в шаблон
+            </button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.01); padding: 10px 15px; border-radius: var(--radius-md);">
+            <label class="checkbox-container">
+                <input type="checkbox" id="toggle-seconds" onchange="toggleSecondsHand()"> Отображать стрелку секунд
+            </label>
+            <span id="realtime-status" style="font-size: 0.8rem; font-weight: 700; color: #2ecc71;">● Синхронизация с системой</span>
+        </div>
+
+        <div class="presets-section">
+            <span class="presets-label">Популярные шаблоны:</span>
+            <div class="preset-grid" id="popular-presets-container"></div>
+        </div>
+
+        <div class="presets-section">
+            <span class="presets-label">Сохраненные шаблоны сессии:</span>
+            <div id="editable-slots-container" class="preset-grid"></div>
+        </div>
+
+        <div class="info-panel" id="time-analysis"></div>
+    </div>
+
+    <div class="card">
+        <h2>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+            Калькулятор интервалов и сдвига
+        </h2>
+
+        <div class="calc-form">
+            <div class="form-row">
+                <div class="input-block">
+                    <label>Время начала</label>
+                    <div class="input-with-action">
+                        <input type="time" id="calc-start" class="styled-input" step="1" style="width: 100%;">
+                        <button class="btn" onclick="setCalcStartNow()">Сейчас</button>
+                    </div>
+                </div>
+
+                <div class="input-block">
+                    <label>Прибавить часы</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="number" id="calc-offset" class="styled-input" value="8" step="0.5" style="width: 100%;">
+                        <span style="font-weight: 700;">ч.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="calc-offset-result" class="output-box success">
+                <div class="output-title">Результат сдвига (+8ч):</div>
+                <div class="output-value-large" id="shift-value">--:--:--</div>
+            </div>
+
+            <div class="input-block" style="border-top: 1px solid rgba(0,0,0,0.08); padding-top: 20px;">
+                <label>Время окончания (для расчета разницы)</label>
+                <input type="time" id="calc-end" class="styled-input" step="1">
+            </div>
+
+            <div id="calc-interval-result" class="output-box">
+                Введите время окончания, чтобы произвести вычисления разницы интервала.
+            </div>
+
+            <div class="input-block" style="border-top: 1px solid rgba(0,0,0,0.08); padding-top: 20px;">
+                <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 10px;">Прибавление дней и расчет даты</h3>
+                <div class="form-row">
+                    <div class="input-block">
+                        <label>Начальная дата</label>
+                        <input type="date" id="date-calc-start" class="styled-input">
+                    </div>
+                    <div class="input-block">
+                        <label>Прибавить дней</label>
+                        <input type="number" id="date-calc-offset" class="styled-input" value="1">
+                    </div>
+                </div>
+                <div id="date-calc-result" class="output-box" style="margin-top: 15px; background: #faf5ff; border-color: #e9d8fd; color: #553c9a;">
+                    Результат расчета даты: выберите значения выше.
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    <div class="footer-content">
+        <span>© 2026 Сергей Н.</span>
+        <span class="footer-item">
+            <a href="mailto:esw1337@gmail.com" class="footer-link" title="Написать письмо">
+                <svg class="footer-icon" viewBox="0 0 24 24">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+                esw1337@gmail.com
+            </a>
+        </span>
+        <span class="footer-item">
+            <a href="https://github.com/youmakemefry-cmd" target="_blank" class="footer-link" title="Открыть профиль GitHub">
+                <svg class="footer-icon" viewBox="0 0 24 24">
+                    <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
+                </svg>
+                GitHub
+            </a>
+        </span>
+    </div>
+</footer>
+
+<script>
+    const inHours = document.getElementById('in-hours');
+    const inMinutes = document.getElementById('in-minutes');
+    const inSeconds = document.getElementById('in-seconds');
+    
+    const popularTemplates = [
+        "19:32", "20:21", "21:25", "22:24", "23:17", 
+        "01:15", "02:23", "03:45", "04:16", "05:16", 
+        "06:12", "07:12"
+    ];
+
+    let savedSlots = [null, null, null, null, null, null];
+    let editingSlotIndex = null;
+    let isRealtime = true;
+
+    function initClockFace() {
+        const face = document.getElementById('clock-face');
+        const radius = 140;
+
+        for (let i = 0; i < 60; i++) {
+            const marker = document.createElement('div');
+            if (i % 5 === 0) {
+                marker.className = 'hour-marker major';
+            } else {
+                marker.className = 'hour-marker';
+                marker.style.height = '7px';
+                marker.style.opacity = '0.35';
+            }
+            marker.style.transform = `rotate(${i * 6}deg)`;
+            face.appendChild(marker);
+        }
+
+        for (let hour = 1; hour <= 12; hour++) {
+            const numEl = document.createElement('div');
+            numEl.className = 'clock-number';
+            numEl.innerText = hour;
+
+            const angle = (hour * 30) * Math.PI / 180;
+            const x = 150 + (radius - 28) * Math.sin(angle) - 15;
+            const y = 150 - (radius - 28) * Math.cos(angle) - 15;
+
+            numEl.style.left = `${x}px`;
+            numEl.style.top = `${y}px`;
+            face.appendChild(numEl);
+        }
+    }
+
+    function initPopularPresets() {
+        const container = document.getElementById('popular-presets-container');
+        container.innerHTML = '';
+        popularTemplates.forEach(timeStr => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.innerText = timeStr;
+            btn.onclick = () => setTimeFromTemplate(timeStr);
+            container.appendChild(btn);
+        });
+    }
+
+    function renderSavedSlots() {
+        const container = document.getElementById('editable-slots-container');
+        container.innerHTML = '';
+
+        savedSlots.forEach((slot, index) => {
+            const pill = document.createElement('div');
+            pill.className = 'saved-template-pill' + (slot ? ' filled' : '');
+
+            if (editingSlotIndex === index) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'pill-edit-input';
+                input.value = slot || "12:00";
+                input.maxLength = 5;
+                
+                input.onblur = () => saveInlineEdit(index, input.value);
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') saveInlineEdit(index, input.value);
+                    if (e.key === 'Escape') { editingSlotIndex = null; renderSavedSlots(); }
+                };
+
+                pill.appendChild(input);
+                setTimeout(() => input.focus(), 50);
+            } else {
+                const zone = document.createElement('div');
+                zone.className = 'time-click-zone';
+                
+                if (slot) {
+                    zone.innerText = slot;
+                    zone.onclick = () => setTimeFromTemplate(slot);
+                } else {
+                    zone.innerHTML = '<span class="empty-placeholder">пустой</span>';
+                    zone.onclick = () => saveCurrentTimeToSpecificSlot(index);
+                }
+
+                pill.appendChild(zone);
+
+                if (slot) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'edit-pencil-btn';
+                    editBtn.title = 'Редактировать значение';
+                    editBtn.innerHTML = `
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    `;
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        editingSlotIndex = index;
+                        renderSavedSlots();
+                    };
+                    pill.appendChild(editBtn);
+                }
+            }
+
+            container.appendChild(pill);
+        });
+    }
+
+    function saveInlineEdit(index, value) {
+        const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        if (regex.test(value)) {
+            savedSlots[index] = value;
+        }
+        editingSlotIndex = null;
+        renderSavedSlots();
+    }
+
+    function saveToFirstAvailableSlot() {
+        const h = (inHours.value || "00").toString().padStart(2, '0');
+        const m = (inMinutes.value || "00").toString().padStart(2, '0');
+        const timeStr = `${h}:${m}`;
+
+        let targetIndex = savedSlots.findIndex(s => s === null);
+        if (targetIndex === -1) {
+            targetIndex = 0;
+        }
+        savedSlots[targetIndex] = timeStr;
+        renderSavedSlots();
+    }
+
+    function saveCurrentTimeToSpecificSlot(index) {
+        const h = (inHours.value || "00").toString().padStart(2, '0');
+        const m = (inMinutes.value || "00").toString().padStart(2, '0');
+        savedSlots[index] = `${h}:${m}`;
+        renderSavedSlots();
+    }
+
+    function runRealtimeClock() {
+        if (!isRealtime) return;
+        const now = new Date();
+        inHours.value = now.getHours();
+        inMinutes.value = now.getMinutes().toString().padStart(2, '0');
+        inSeconds.value = now.getSeconds().toString().padStart(2, '0');
+        updateClockAndAnalysis();
+        setTimeout(runRealtimeClock, 1000);
+    }
+
+    function freezeClock() {
+        if (isRealtime) {
+            isRealtime = false;
+            document.getElementById('realtime-status').innerText = '● Ручной ввод (зафиксировано)';
+            document.getElementById('realtime-status').style.color = 'var(--danger)';
+        }
+    }
+
+    function updateClockAndAnalysis() {
+        let h = parseInt(inHours.value) || 0;
+        let m = parseInt(inMinutes.value) || 0;
+        let s = parseInt(inSeconds.value) || 0;
+
+        if (h > 23) h = 23; if (h < 0) h = 0;
+        if (m > 59) m = 59; if (m < 0) m = 0;
+        if (s > 59) s = 59; if (s < 0) s = 0;
+
+        const hourAngle = (h % 12) * 30 + m * 0.5; 
+        const minuteAngle = m * 6;
+        const secondAngle = s * 6;
+
+        document.getElementById('hour-hand').style.transform = `rotate(${hourAngle}deg)`;
+        document.getElementById('minute-hand').style.transform = `rotate(${minuteAngle}deg)`;
+        document.getElementById('second-hand').style.transform = `rotate(${secondAngle}deg)`;
+
+        const pad = (num) => num.toString().padStart(2, '0');
+        document.getElementById('digital-clock').innerText = `${pad(h)}:${pad(m)}:${pad(s)}`;
+
+        const totalSecondsInDay = 24 * 3600;
+        const currentSeconds = (h * 3600) + (m * 60) + s;
+        const dayPercent = ((currentSeconds / totalSecondsInDay) * 100).toFixed(2);
+        const decimalTime = (h + m / 60 + s / 3600).toFixed(2);
+
+        const ruWords = getRussianTimePhrase(h, m);
+        const ampm = h >= 12 ? 'p.m.' : 'a.m.';
+        const h12 = h % 12 === 0 ? 12 : h % 12;
+        const enPhrase = `${h12}:${pad(m)} ${ampm}`;
+
+        const altHour = h >= 12 ? h - 12 : h + 12;
+        const altTimeStr = `${pad(altHour)}:${pad(m)}`;
+
+        document.getElementById('time-analysis').innerHTML = `
+            <div class="info-row"><strong>Сколько это на часах?</strong> <span>${ruWords.full}</span></div>
+            <div class="info-row"><strong>Разговорный формат:</strong> <span>${ruWords.short}</span></div>
+            <div class="info-row"><strong>Литературный формат:</strong> <span>${ruWords.trad}</span></div>
+            <div class="info-row"><strong>Часть суток (прогресс):</strong> <span>${dayPercent}%</span></div>
+            <div class="info-row"><strong>Десятичный формат:</strong> <span>${decimalTime} ч.</span></div>
+            <div class="info-row"><strong>На английском:</strong> <span>${enPhrase}</span></div>
+            <div class="info-row" style="color: var(--text-muted); font-size: 0.85rem;">
+                <span>Альтернатива (12ч/24ч):</span> <span>${altTimeStr}</span>
+            </div>
+        `;
+    }
+
+    function getRussianTimePhrase(h, m) {
+        const hoursWords = ["ноль часов", "один час", "два часа", "три часа", "четыре часа", "пять часов", "шесть часов", "семь часов", "восемь часов", "девять часов", "десять часов", "одиннадцать часов", "двенадцать часов", "тринадцать часов", "четырнадцать часов", "пятнадцать часов", "шестнадцать часов", "семнадцать часов", "восемнадцать часов", "девятнадцать часов", "двадцать часов", "двадцать один час", "двадцать два часа", "двадцать три часа"];
+        let full = `${hoursWords[h]} ${m} мин.`;
+        let short = `${h} ${m === 0 ? 'ноль-ноль' : m}`;
+        let trad = "";
+        let nextHour = (h + 1) % 24;
+        const rodPadHours = ["первого", "второго", "третьего", "четвертого", "пятого", "шестого", "седьмого", "восьмого", "девятого", "десятого", "одиннадцатого", "двенадцатого", "первого", "второго", "третьего", "четвертого", "пятого", "шестого", "седьмого", "восьмого", "девятого", "десятого", "одиннадцатого", "двенадцатого"];
+
+        if (m === 0) {
+            trad = `Ровно ${h} ч.`;
+        } else if (m === 30) {
+            trad = `Половина ${rodPadHours[h]}`;
+        } else if (m < 30) {
+            trad = `${m} минут ${rodPadHours[h]}`;
+        } else {
+            trad = `Без ${60 - m} минут ${nextHour === 0 ? 'полночь' : nextHour + ' ч.'}`;
+        }
+        return { full, short, trad };
+    }
+
+    function setupSmartInputs() {
+        [inHours, inMinutes, inSeconds].forEach(input => {
+            input.addEventListener('click', function() { this.select(); });
+            input.addEventListener('input', function() {
+                freezeClock();
+                if (input === inHours && inHours.value !== "" && inMinutes.value === "") inMinutes.value = "00";
+                if (input === inMinutes && inMinutes.value !== "" && inSeconds.value === "") inSeconds.value = "00";
+                updateClockAndAnalysis();
+            });
+            input.addEventListener('keydown', function(e) {
+                if(e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    freezeClock();
+                    setTimeout(updateClockAndAnalysis, 10);
+                }
+            });
+        });
+    }
+
+    function toggleSecondsHand() {
+        const isChecked = document.getElementById('toggle-seconds').checked;
+        document.getElementById('second-hand').style.display = isChecked ? 'block' : 'none';
+    }
+
+    function setTimeFromTemplate(timeStr) {
+        freezeClock();
+        const parts = timeStr.split(':');
+        inHours.value = parts[0];
+        inMinutes.value = parts[1] || "00";
+        inSeconds.value = parts[2] || "00";
+        updateClockAndAnalysis();
+    }
+
+    // --- Calc interval ---
+    const calcStart = document.getElementById('calc-start');
+    const calcEnd = document.getElementById('calc-end');
+    const calcOffset = document.getElementById('calc-offset');
+
+    function setCalcStartNow() {
+        const now = new Date();
+        calcStart.value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+        calculateCalculators();
+    }
+
+    function calculateCalculators() {
+        const startVal = calcStart.value;
+        if (!startVal) return;
+
+        const startParts = startVal.split(':');
+        const sH = parseInt(startParts[0]) || 0;
+        const sM = parseInt(startParts[1]) || 0;
+        const sS = parseInt(startParts[2]) || 0;
+
+        const offsetHours = parseFloat(calcOffset.value) || 0;
+        const totalStartSeconds = (sH * 3600) + (sM * 60) + sS;
+        
+        let targetSeconds = totalStartSeconds + Math.round(offsetHours * 3600);
+        if (targetSeconds < 0) targetSeconds = (targetSeconds % 86400) + 86400;
+        targetSeconds = targetSeconds % 86400;
+
+        const tH = Math.floor(targetSeconds / 3600);
+        const tM = Math.floor((targetSeconds % 3600) / 60);
+        const tS = targetSeconds % 60;
+        
+        document.querySelector('#calc-offset-result .output-title').innerText = `Результат сдвига (+${offsetHours}ч):`;
+        const pad = (num) => num.toString().padStart(2, '0');
+        document.getElementById('shift-value').innerHTML = `${pad(tH)}:${pad(tM)}:${pad(tS)}`;
+
+        const endVal = calcEnd.value;
+        if (endVal) {
+            const endParts = endVal.split(':');
+            const eH = parseInt(endParts[0]) || 0;
+            const eM = parseInt(endParts[1]) || 0;
+            const eS = parseInt(endParts[2]) || 0;
+
+            let totalEndSeconds = (eH * 3600) + (eM * 60) + eS;
+            if (totalEndSeconds < totalStartSeconds) totalEndSeconds += 86400; 
+
+            const diffSeconds = totalEndSeconds - totalStartSeconds;
+            const diffH = Math.floor(diffSeconds / 3600);
+            const diffM = Math.floor((diffSeconds % 3600) / 60);
+            const diffDecimal = (diffSeconds / 3600).toFixed(2);
+            const totalMinutes = Math.floor(diffSeconds / 60);
+
+            document.getElementById('calc-interval-result').innerHTML = `
+                <div class="output-title">Интервал времени:</div>
+                <div class="output-value-large" style="font-size:1.4rem; margin-bottom:10px;">
+                    ${diffH} ч. ${diffM} мин.
+                </div>
+                <div style="font-size: 0.9rem; color: var(--text-main); font-weight: 500; line-height: 1.6;">
+                    Прошло часов: ${diffDecimal} ч.<br>
+                    Прошло минут: ${totalMinutes} мин.
+                </div>
+            `;
+        } else {
+            document.getElementById('calc-interval-result').innerText = 'Введите время окончания, чтобы произвести вычисления разницы интервала.';
+        }
+    }
+
+    // --- Calc date ---
+    const dateCalcStart = document.getElementById('date-calc-start');
+    const dateCalcOffset = document.getElementById('date-calc-offset');
+
+    function initDateCalculator() {
+        const today = new Date();
+        const pad = (n) => n.toString().padStart(2, '0');
+        dateCalcStart.value = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+        calculateDates();
+    }
+
+    function calculateDates() {
+        const startVal = dateCalcStart.value;
+        const offsetDays = parseInt(dateCalcOffset.value) || 0;
+        if (!startVal) return;
+
+        const startDate = new Date(startVal);
+        const resultDate = new Date(startDate);
+        resultDate.setDate(startDate.getDate() + offsetDays);
+
+        const daysOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const resultStr = resultDate.toLocaleDateString('ru-RU', daysOptions);
+
+        document.getElementById('date-calc-result').innerHTML = `
+            <div class="output-title">Сдвиг по календарю:</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #44337a; margin-bottom: 5px;">
+                ${resultDate.toLocaleDateString('ru-RU')}
+            </div>
+            <div style="font-size: 0.85rem; color: #6b46c1; font-weight: 500;">
+                (${resultStr})
+            </div>
+        `;
+    }
+
+    [calcStart, calcEnd, calcOffset].forEach(el => el.addEventListener('input', calculateCalculators));
+    [dateCalcStart, dateCalcOffset].forEach(el => el.addEventListener('input', calculateDates));
+
+    window.onload = function() {
+        initClockFace();
+        setupSmartInputs();
+        initPopularPresets();
+        renderSavedSlots();
+        initDateCalculator();
+        runRealtimeClock();
+        setCalcStartNow();
+    }
+</script>
+</body>
+</html>
