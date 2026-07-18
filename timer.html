@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="night" data-font="roboto" data-zen="false">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Work Timer Pro — Архитектура Фокуса</title>
+    <style>
+        /* ==========================================================================
+           ИМПОРТ ШРИФТОВ
+           ========================================================================== */
+        @import url('https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;700&family=Inter:wght@300;400;600;800&family=Roboto:wght@400;700&display=swap');
+
+        /* ==========================================================================
+           1. ДИЗАЙН-СИСТЕМА И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ (THEMING ENGINE)
+           ========================================================================== */
+        :root {
+            /* Шрифтовые стеки премиального уровня */
+            --font-roboto: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-martian: 'Martian Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            
+            /* Тайминги анимаций интерфейса */
+            --anim-speed-fast: 0.15s;
+            --anim-speed-base: 0.25s;
+            --anim-speed-slow: 0.4s;
+            
+            /* Кривые Безье для плавности */
+            --anim-curve-ease: cubic-bezier(0.4, 0, 0.2, 1);
+            --anim-curve-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            
+            /* Глобальные транзиции */
+            --interface-transition: all var(--anim-speed-base) var(--anim-curve-ease);
+            --color-transition: color var(--anim-speed-base) ease, background-color var(--anim-speed-base) ease, border-color var(--anim-speed-base) ease;
+        }
+
+        /* --- ТЕМА 1: НОЧНАЯ (Глубокий OLED-монохром, Выбрана по умолчанию) --- */
+        [data-theme="night"] {
+            /* Базовые фоны */
+            --bg-main: #000000;
+            --bg-card: #0a0a0a;
+            
+            /* Границы и разделители */
+            --border-ui: #2a2a2a; 
+            --border-ui-hover: #3f3f3f;
+            
+            /* Типографика */
+            --text-main: #ffffff;
+            --text-muted: #a3a3a3; /* Осветленный серый для читаемости */
+            --text-accent: #ffffff;
+            --text-disabled: #444444;
+            
+            /* Основные кнопки действий */
+            --color-green: #14532d; 
+            --color-green-hover: #166534;
+            --color-red: #7f1d1d;
+            --color-red-hover: #991b1b;
+            
+            /* Сброс - спокойный приглушенный синий */
+            --color-reset: #1e3a8a;
+            --color-reset-hover: #1e40af;
+            
+            /* Кнопка паузы */
+            --btn-pause-bg: #1f1f1f;
+            --btn-pause-hover: #2e2e2e;
+            --btn-pause-text: #ffffff;
+            --btn-pause-border: #333333;
+            
+            /* Консоль и логирование */
+            --console-bg: #050505;
+            --console-text: #d4d4d8;
+            --console-border: #222222;
+            --console-header-bg: rgba(255, 255, 255, 0.02);
+            --console-header-hover: rgba(255, 255, 255, 0.05);
+            
+            /* Эффекты свечения (выключены в ночной) */
+            --clock-glow: none;
+            
+            /* Цвета логов */
+            --log-work-color: #ffffff;
+            --log-work-border: #ffffff;
+            --log-rest-color: #a1a1aa;
+            --log-rest-border: #a1a1aa;
+            --log-sys-color: #71717a;
+        }
+
+        /* --- ТЕМА 2: СТАНДАРТ (Инструментальная темно-синяя глубина) --- */
+        [data-theme="standard"] {
+            /* Базовые фоны */
+            --bg-main: #090d16;
+            --bg-card: #111827;
+            
+            /* Границы и разделители */
+            --border-ui: rgba(255, 255, 255, 0.1);
+            --border-ui-hover: rgba(255, 255, 255, 0.2);
+            
+            /* Типографика */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-accent: #60a5fa;
+            --text-disabled: #475569;
+            
+            /* Основные кнопки действий */
+            --color-green: #16a34a;
+            --color-green-hover: #15803d;
+            --color-red: #dc2626;
+            --color-red-hover: #b91c1c;
+            
+            /* Сброс - яркий синий */
+            --color-reset: #2563eb;
+            --color-reset-hover: #1d4ed8;
+            
+            /* Кнопка паузы */
+            --btn-pause-bg: #27272a;
+            --btn-pause-hover: #3f3f46;
+            --btn-pause-text: #f4f4f5;
+            --btn-pause-border: #3f3f46;
+            
+            /* Консоль и логирование */
+            --console-bg: #111827;
+            --console-text: #cbd5e1;
+            --console-border: rgba(255, 255, 255, 0.1);
+            --console-header-bg: rgba(255, 255, 255, 0.03);
+            --console-header-hover: rgba(255, 255, 255, 0.06);
+            
+            /* Эффекты свечения */
+            --clock-glow: 0 0 60px rgba(59, 130, 246, 0.12);
+            
+            /* Цвета логов */
+            --log-work-color: #a7f3d0;
+            --log-work-border: #10b981;
+            --log-rest-color: #fef08a;
+            --log-rest-border: #f59e0b;
+            --log-sys-color: #64748b;
+        }
+
+        /* --- ТЕМА 3: ДНЕВНАЯ (Высококонтрастный светлый офисный монохром) --- */
+        [data-theme="day"] {
+            /* Базовые фоны */
+            --bg-main: #ffffff;
+            --bg-card: #f4f4f5;
+            
+            /* Границы и разделители */
+            --border-ui: #d4d4d8;
+            --border-ui-hover: #a1a1aa;
+            
+            /* Типографика */
+            --text-main: #09090b;
+            --text-muted: #52525b;
+            --text-accent: #09090b;
+            --text-disabled: #a1a1aa;
+            
+            /* Основные кнопки действий */
+            --color-green: #16a34a;
+            --color-green-hover: #15803d;
+            --color-red: #dc2626;
+            --color-red-hover: #b91c1c;
+            
+            /* Сброс - синий стандартный */
+            --color-reset: #2563eb;
+            --color-reset-hover: #1d4ed8;
+            
+            /* Кнопка паузы */
+            --btn-pause-bg: #e4e4e7;
+            --btn-pause-hover: #d4d4d8;
+            --btn-pause-text: #09090b;
+            --btn-pause-border: #d4d4d8;
+            
+            /* Консоль и логирование */
+            --console-bg: #f4f4f5;
+            --console-text: #18181b;
+            --console-border: #d4d4d8;
+            --console-header-bg: rgba(0, 0, 0, 0.03);
+            --console-header-hover: rgba(0, 0, 0, 0.06);
+            
+            /* Эффекты свечения */
+            --clock-glow: none;
+            
+            /* Цвета логов */
+            --log-work-color: #09090b;
+            --log-work-border: #09090b;
+            --log-rest-color: #52525b;
+            --log-rest-border: #52525b;
+            --log-sys-color: #a1a1aa;
+        }
+
+        /* ==========================================================================
+           2. БАЗОВЫЙ КАРКАС И ГЕОМЕТРИЯ СЕТКИ (LAYOUT ARCHITECTURE)
+           ========================================================================== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            transition: var(--color-transition);
+            position: relative;
+            overflow-x: hidden;
+            font-family: var(--font-roboto);
+        }
+
+        /* Динамическое связывание шрифтов через атрибуты верхнего уровня */
+        [data-font="roboto"] #displayDigits { 
+            font-family: var(--font-roboto); 
+            font-weight: 700; 
+        }
+        [data-font="inter"] #displayDigits { 
+            font-family: var(--font-inter); 
+            font-weight: 800; 
+            letter-spacing: -0.01em;
+        }
+        [data-font="martian"] #displayDigits { 
+            font-family: var(--font-martian); 
+            font-weight: 700; 
+            letter-spacing: -0.04em; 
+        }
+
+        /* ==========================================================================
+           3. ВЕРХНЯЯ СЛУЖЕБНАЯ ПАНЕЛЬ КОНТРОЛЛЕРОВ
+           ========================================================================== */
+        .top-bar-architecture {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 0;
+            margin-bottom: 24px;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 12px;
+            position: relative;
+            z-index: 20;
+        }
+
+        .hub-link-compact {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 700;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            padding-left: 16px;
+            padding-right: 16px;
+            border-radius: 8px;
+            background-color: rgba(128, 128, 128, 0.05);
+            border-width: 1px;
+            border-style: solid;
+            border-color: var(--border-ui);
+            transition: var(--interface-transition);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .hub-link-compact:hover {
+            color: var(--text-main);
+            border-color: var(--text-accent);
+            background-color: rgba(128, 128, 128, 0.1);
+        }
+
+        .controls-selector-group {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: nowrap;
+        }
+
+        .segment-container {
+            display: inline-flex;
+            background-color: rgba(128, 128, 128, 0.05);
+            border-width: 1px;
+            border-style: solid;
+            border-color: var(--border-ui);
+            padding-top: 2px;
+            padding-bottom: 2px;
+            padding-left: 2px;
+            padding-right: 2px;
+            border-radius: 8px;
+            flex-wrap: nowrap;
+        }
+
+        .segment-btn {
+            background-color: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding-top: 8px;
+            padding-bottom: 8px;
+            padding-left: 12px;
+            padding-right: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--interface-transition);
+            white-space: nowrap;
+            font-family: inherit;
+        }
+
+        .segment-btn:hover {
+            color: var(--text-main);
+        }
+
+        .segment-btn.active-segment {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* ==========================================================================
+           4. ЦЕНТРАЛЬНОЕ РАБОЧЕЕ ПРОСТРАНСТВО (WORKSPACE CORE)
+           ========================================================================== */
+        .workspace-core {
+            flex-grow: 1;
+            flex-shrink: 1;
+            flex-basis: auto;
+            width: 100%;
+            max-width: 1400px;
+            margin-top: 0;
+            margin-bottom: 0;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+        }
+
+        /* ТЕАТР ТАЙМЕРА — ОГРАНИЧЕНИЯ СНЯТЫ. ШРИФТ МОЖЕТ БЫТЬ ОГРОМНЫМ */
+        .clock-theater-stage {
+            flex-grow: 1;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38vh;
+            position: relative;
+            user-select: none;
+            width: 100%;
+            overflow: visible; /* Разрешаем выход за рамки */
+        }
+
+        .huge-digits {
+            line-height: 0.9;
+            color: var(--text-main);
+            font-variant-numeric: tabular-nums;
+            text-shadow: var(--clock-glow);
+            transition: text-shadow 0.3s ease, color 0.3s ease, font-size 0.3s ease;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        /* Индивидуальное масштабирование каждого шрифта для десктопа 
+           Roboto получает самый большой множитель, Martian самый скромный */
+        [data-font="roboto"] .huge-digits { font-size: clamp(8rem, 28vw, 320px); }
+        [data-font="inter"] .huge-digits { font-size: clamp(7.5rem, 26vw, 290px); }
+        [data-font="martian"] .huge-digits { font-size: clamp(6.5rem, 22vw, 250px); }
+
+
+        /* ИНТЕРФЕЙСНАЯ СЕТКА УПРАВЛЕНИЯ КНОПКАМИ */
+        .action-hub-grid {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 0;
+            margin-bottom: 0;
+            margin-left: auto;
+            margin-right: auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 14px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .btn-ux-core {
+            height: 64px;
+            border-radius: 12px;
+            border-width: 1px;
+            border-style: solid;
+            border-color: transparent;
+            cursor: pointer;
+            font-family: var(--font-roboto);
+            font-weight: 700;
+            font-size: 1.05rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            color: #ffffff;
+            transition: transform 0.1s ease, background-color var(--anim-speed-base) ease;
+            user-select: none;
+            outline: none;
+        }
+
+        .btn-ux-core:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+
+        .btn-ux-core:disabled {
+            opacity: 0.12;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Стилизация кнопок действий */
+        .btn-style-start { 
+            background-color: var(--color-green); 
+        }
+        .btn-style-start:hover:not(:disabled) { 
+            background-color: var(--color-green-hover); 
+        }
+        
+        .btn-style-start.state-resetting { 
+            background-color: var(--color-reset); 
+        }
+        .btn-style-start.state-resetting:hover:not(:disabled) { 
+            background-color: var(--color-reset-hover); 
+        }
+
+        .btn-style-pause { 
+            background-color: var(--btn-pause-bg); 
+            color: var(--btn-pause-text); 
+            border-color: var(--btn-pause-border); 
+        }
+        .btn-style-pause:hover:not(:disabled) { 
+            background-color: var(--btn-pause-hover); 
+        }
+        .btn-style-pause.resume-state { 
+            background-color: var(--color-green); 
+            color: #ffffff; 
+            border-color: transparent; 
+        }
+
+        .btn-style-stop { 
+            background-color: var(--color-red); 
+        }
+        .btn-style-stop:hover:not(:disabled) { 
+            background-color: var(--color-red-hover); 
+        }
+
+        .btn-ux-subtext {
+            font-size: 0.75rem;
+            font-weight: 400;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* ==========================================================================
+           5. ИНФОРМАЦИОННЫЙ ПОДВАЛ И ПРОДВИНУТАЯ КОНСОЛЬ
+           ========================================================================== */
+        .dashboard-footer-system {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 12px;
+            margin-bottom: 0;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .console-architecture {
+            background-color: var(--console-bg);
+            border-width: 1px;
+            border-style: solid;
+            border-color: var(--console-border);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: border-color var(--anim-speed-base);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .console-interactive-header {
+            padding-top: 14px;
+            padding-bottom: 14px;
+            padding-left: 16px;
+            padding-right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            background-color: var(--console-header-bg);
+            transition: background-color var(--anim-speed-base);
+        }
+
+        .console-interactive-header:hover {
+            background-color: var(--console-header-hover);
+        }
+
+        .console-title-area {
+            font-family: var(--font-roboto);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .console-chevron {
+            transition: transform var(--anim-speed-base) var(--anim-curve-ease);
+            flex-shrink: 0;
+            color: var(--text-muted);
+        }
+
+        .console-architecture.collapsed .console-chevron {
+            transform: rotate(-90deg);
+        }
+
+        .console-action-bar {
+            display: flex;
+            gap: 8px;
+            position: relative;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .btn-console-util {
+            background-color: rgba(128, 128, 128, 0.04);
+            border-width: 1px;
+            border-style: solid;
+            border-color: var(--border-ui);
+            color: var(--text-muted);
+            padding-top: 6px;
+            padding-bottom: 6px;
+            padding-left: 10px;
+            padding-right: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: var(--font-roboto);
+            transition: var(--interface-transition);
+            white-space: nowrap;
+        }
+
+        .btn-console-util:hover {
+            color: var(--text-main);
+            border-color: var(--text-accent);
+        }
+
+        .btn-console-util.inline-zen-trigger {
+            display: none;
+        }
+
+        .console-viewport {
+            height: 180px;
+            overflow-y: auto;
+            padding-top: 14px;
+            padding-bottom: 14px;
+            padding-left: 16px;
+            padding-right: 16px;
+            font-family: var(--font-martian);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--console-text);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: height var(--anim-speed-base) var(--anim-curve-ease), 
+                        padding var(--anim-speed-base) ease, 
+                        opacity var(--anim-speed-base) ease;
+        }
+
+        /* Скроллбар консоли */
+        .console-viewport::-webkit-scrollbar {
+            width: 8px;
+        }
+        .console-viewport::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .console-viewport::-webkit-scrollbar-thumb {
+            background: var(--border-ui);
+            border-radius: 4px;
+        }
+        .console-viewport::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        .console-architecture.collapsed .console-viewport {
+            height: 0px !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        /* Цветовая структура логов */
+        .log-line { 
+            padding-left: 8px; 
+            border-left-width: 2px;
+            border-left-style: solid;
+            border-left-color: transparent; 
+            white-space: pre-wrap; 
+            word-break: break-word;
+        }
+        .log-line.type-work { border-color: var(--log-work-border); color: var(--log-work-color); }
+        .log-line.type-rest { border-color: var(--log-rest-border); color: var(--log-rest-color); }
+        .log-line.type-system { border-color: var(--log-sys-color); color: var(--log-sys-color); }
+
+        /* Итоговая аналитическая карта (Scorecard) */
+        .summary-scorecard {
+            background-color: rgba(128, 128, 128, 0.03);
+            border-width: 1px;
+            border-style: dashed;
+            border-color: var(--border-ui);
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 6px;
+            margin-bottom: 6px;
+        }
+
+        .summary-scorecard-title {
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.02em;
+        }
+
+        .summary-scorecard-node {
+            padding-left: 12px;
+            position: relative;
+            font-size: 0.8rem;
+            margin-bottom: 2px;
+            color: var(--text-muted);
+        }
+        .summary-scorecard-node::before {
+            content: "▪";
+            position: absolute;
+            left: 0;
+            color: var(--border-ui-hover);
+            font-size: 0.6rem;
+            top: 2px;
+        }
+
+        /* ТРЕЙ НАСТРОЕК СТРОГО ПОД КОНСОЛЬЮ */
+        .settings-bottom-tray {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-top: 12px;
+            padding-bottom: 0;
+            padding-left: 0;
+            padding-right: 0;
+            border-top-width: 1px;
+            border-top-style: solid;
+            border-top-color: var(--border-ui);
+        }
+
+        .tray-element-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: var(--font-roboto);
+        }
+
+        .select-architectural {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            border-width: 1px;
+            border-style: solid;
+            border-color: var(--border-ui);
+            padding-top: 6px;
+            padding-bottom: 6px;
+            padding-left: 10px;
+            padding-right: 10px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+            font-family: var(--font-roboto);
+            font-size: 0.85rem;
+            transition: var(--interface-transition);
+        }
+        
+        .select-architectural:hover {
+            border-color: var(--border-ui-hover);
+        }
+
+        /* ==========================================================================
+           6. АРХИТЕКТУРА ДЗЕН-РЕЖИМА (СЛОЖНАЯ МАРШРУТИЗАЦИЯ ПО МЕДИАЗАПРОСАМ)
+           ========================================================================== */
+        
+        /* БАЗОВЫЙ ДЕСКТОП: Кнопка отделена, маленькая, в углу */
+        .zen-trigger-anchor {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: auto;
+            margin: 0;
+            z-index: 50;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-zen-mode {
+            background-color: transparent;
+            border-width: 1px;
+            border-style: solid;
+            border-color: transparent;
+            color: var(--text-muted);
+            padding-top: 6px;
+            padding-bottom: 6px;
+            padding-left: 12px;
+            padding-right: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--font-roboto);
+            transition: var(--interface-transition);
+            opacity: 0.3; /* Еле заметная в углу на десктопе */
+            white-space: nowrap; /* Всегда в одну строку! */
+        }
+
+        .btn-zen-mode:hover {
+            opacity: 1;
+            color: var(--text-main);
+            background-color: rgba(128, 128, 128, 0.1);
+            border-color: var(--border-ui);
+        }
+
+        /* СКРЫТИЕ ИНТЕРФЕЙСА ПРИ АКТИВНОМ ДЗЕНЕ (ГЛОБАЛЬНО) */
+        [data-zen="true"] .top-bar-architecture,
+        [data-zen="true"] .action-hub-grid,
+        [data-zen="true"] .dashboard-footer-system {
+            display: none !important;
+        }
+
+        [data-zen="true"] body {
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Блокируем скролл */
+        }
+
+        [data-zen="true"] .workspace-core {
+            height: auto;
+            justify-content: center;
+            align-items: center;
+            max-width: 100%;
+            gap: 0;
+            flex: 1;
+        }
+
+        [data-zen="true"] .clock-theater-stage {
+            width: 100vw;
+            height: 100vh;
+            max-width: 100% !important;
+            flex: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Ограничиваем шрифты в Дзен-режиме */
+        [data-zen="true"] [data-font="roboto"] .huge-digits { font-size: clamp(4rem, 24vw, 36vh); }
+        [data-zen="true"] [data-font="inter"] .huge-digits { font-size: clamp(3.8rem, 22vw, 34vh); }
+        [data-zen="true"] [data-font="martian"] .huge-digits { font-size: clamp(3.5rem, 20vw, 30vh); }
+
+        /* В ДЗЕН-РЕЖИМЕ НА ДЕСКТОПЕ: Кнопка остается там же, просто чуть меняем стиль */
+        [data-zen="true"] .btn-zen-mode {
+            opacity: 0.3;
+            background-color: transparent;
+            border-color: transparent;
+            z-index: 9999; 
+            white-space: nowrap; 
+        }
+
+        [data-zen="true"] .btn-zen-mode:hover {
+            opacity: 0.9;
+            background-color: var(--bg-card);
+            border-color: var(--border-ui);
+        }
+
+        /* ==========================================================================
+           7. АДАПТИВНОСТЬ (RESPONSIVE ENGINE)
+           ========================================================================== */
+        
+        /* --- СЦЕНАРИЙ А: ВЕРТИКАЛЬНЫЙ СМАРТФОН (PORTRAIT SMARTPHONES) --- */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            body {
+                padding-top: 16px;
+                padding-bottom: 16px;
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            .top-bar-architecture {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                margin-bottom: 12px;
+            }
+
+            .hub-link-compact {
+                justify-content: center;
+                width: 100%;
+                font-size: 0.9rem;
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+
+            .controls-selector-group {
+                justify-content: space-between;
+                width: 100%;
+                gap: 8px;
+            }
+
+            .segment-container {
+                flex-grow: 1;
+                justify-content: center;
+            }
+
+            .segment-btn {
+                flex-grow: 1;
+                text-align: center;
+                padding-top: 8px;
+                padding-bottom: 8px;
+                padding-left: 4px;
+                padding-right: 4px;
+                font-size: 0.75rem; 
+            }
+
+            .clock-theater-stage {
+                min-height: 25vh;
+            }
+
+            [data-font="roboto"] .huge-digits { font-size: clamp(4rem, 24vw, 15vh); }
+            [data-font="inter"] .huge-digits { font-size: clamp(3.8rem, 22vw, 14vh); }
+            [data-font="martian"] .huge-digits { font-size: clamp(3.2rem, 18vw, 12vh); }
+
+            .action-hub-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .btn-ux-core {
+                height: 56px;
+                font-size: 1rem;
+            }
+
+            .console-interactive-header {
+                padding-top: 12px;
+                padding-bottom: 12px;
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            /* КОСТЫЛЬ ДЛЯ ОБРЕЗКИ ТЕКСТА В ПОРТРЕТЕ */
+            .console-title-text {
+                display: none; /* Прячем оригинальный текст */
+            }
+            .console-title-area::after {
+                content: "Метрики и лог..."; /* Жестко подставляем короткий вариант */
+                font-size: 0.75rem;
+            }
+
+            .btn-console-util {
+                padding-top: 6px;
+                padding-bottom: 6px;
+                padding-left: 8px;
+                padding-right: 8px;
+                font-size: 0.7rem;
+            }
+
+            .dashboard-footer-system {
+                margin-top: 12px;
+            }
+            
+            /* ВОЗВРАЩАЕМ ПРЯМОУГОЛЬНЫЙ БЛОК ДЛЯ МОБИЛКИ В ПОРТРЕТЕ */
+            .zen-trigger-anchor {
+                position: relative;
+                width: 100%;
+                max-width: 800px;
+                margin-top: 12px;
+                margin-bottom: 0;
+                margin-left: auto;
+                margin-right: auto;
+                right: auto;
+                bottom: auto;
+                justify-content: center;
+            }
+
+            .btn-zen-mode {
+                width: 100%;
+                background-color: rgba(128, 128, 128, 0.05);
+                border-color: var(--border-ui);
+                padding-top: 14px;
+                padding-bottom: 14px;
+                font-size: 0.9rem;
+                opacity: 0.75;
+                white-space: nowrap; /* Запрет на разрыв строк! */
+                overflow: hidden;
+            }
+
+            /* В АКТИВНОМ ДЗЕНЕ ДЛЯ ПОРТРЕТА — КНОПКА ПО ЦЕНТРУ И В ОДНУ СТРОКУ */
+            [data-zen="true"] .zen-trigger-anchor {
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: auto;
+                right: auto;
+            }
+
+            [data-zen="true"] .btn-zen-mode {
+                width: auto;
+                background-color: transparent;
+                border-color: transparent;
+                padding-top: 12px;
+                padding-bottom: 12px;
+                padding-left: 24px;
+                padding-right: 24px;
+                white-space: nowrap; /* Строго одна строка, как ты просил */
+                font-weight: 700;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* --- СЦЕНАРИЙ Б: ГОРИЗОНТАЛЬНЫЙ СМАРТФОН (LANDSCAPE SMARTPHONES) --- */
+        @media screen and (max-height: 500px) and (orientation: landscape) {
+            
+            .top-bar-architecture { display: none !important; }
+            .settings-bottom-tray { display: none !important; }
+            
+            /* В обычном режиме скрываем основной блок (используется кнопка в консоли) */
+            .zen-trigger-anchor { 
+                display: none !important;
+            }
+
+            /* НО В ДЗЕН-РЕЖИМЕ — ВОЗВРАЩАЕМ КАК НА ДЕСКТОПЕ (В правый нижний угол) */
+            [data-zen="true"] .zen-trigger-anchor {
+                display: flex !important;
+                position: fixed;
+                bottom: 16px;
+                right: 16px;
+                left: auto;
+                transform: none;
+                width: auto;
+                margin: 0;
+                z-index: 9999;
+                justify-content: flex-end;
+            }
+
+            [data-zen="true"] .btn-zen-mode {
+                background-color: transparent;
+                border-color: transparent;
+                opacity: 0.3; /* Слабозаметная! */
+                padding-top: 6px;
+                padding-bottom: 6px;
+                padding-left: 12px;
+                padding-right: 12px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                white-space: nowrap; /* Однострочная! */
+                width: auto;
+            }
+            
+            [data-zen="true"] .btn-zen-mode:hover {
+                opacity: 0.9;
+                background-color: var(--bg-card);
+                border-color: var(--border-ui);
+            }
+
+            body {
+                padding-top: 8px;
+                padding-bottom: 8px;
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .workspace-core {
+                gap: 8px;
+                justify-content: space-between;
+            }
+
+            .clock-theater-stage {
+                min-height: 45vh;
+                flex: 1;
+                max-width: 720px;
+                margin-top: 0;
+                margin-bottom: 0;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            [data-font="roboto"] .huge-digits { font-size: clamp(4rem, 24vw, 48vh); }
+            [data-font="inter"] .huge-digits { font-size: clamp(3.8rem, 22vw, 44vh); }
+            [data-font="martian"] .huge-digits { font-size: clamp(3.5rem, 20vw, 40vh); }
+
+            .action-hub-grid {
+                grid-template-columns: 2fr 1fr 1fr;
+                gap: 10px;
+                width: 100%;
+                max-width: 720px;
+            }
+
+            .btn-ux-core {
+                height: 46px;
+                font-size: 0.95rem;
+            }
+
+            .btn-ux-subtext {
+                display: none; 
+            }
+
+            .dashboard-footer-system {
+                margin-top: 4px;
+                width: 100%;
+                max-width: 720px;
+            }
+
+            .console-viewport {
+                height: 110px;
+            }
+
+            .btn-console-util.inline-zen-trigger {
+                display: inline-block !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Верхняя архитектурная панель параметров -->
+<header class="top-bar-architecture">
+    <a href="index.html" class="hub-link-compact">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Визуализация и интервалы
+    </a>
+    
+    <div class="controls-selector-group">
+        <!-- Компонент выбора шрифта -->
+        <div class="segment-container" id="fontSegmentGroup">
+            <button class="segment-btn active-segment" onclick="mutateTimerFont('roboto', this)">Roboto</button>
+            <button class="segment-btn" onclick="mutateTimerFont('inter', this)">Inter</button>
+            <button class="segment-btn" onclick="mutateTimerFont('martian', this)">Martian</button>
+        </div>
+
+        <!-- Компонент выбора темы -->
+        <div class="segment-container" id="themeSegmentGroup">
+            <button class="segment-btn active-segment" onclick="mutateTimerTheme('night', this)">Ночная</button>
+            <button class="segment-btn" onclick="mutateTimerTheme('standard', this)">Стандарт</button>
+            <button class="segment-btn" onclick="mutateTimerTheme('day', this)">Дневная</button>
+        </div>
+    </div>
+</header>
+
+<!-- Центральный рабочий каркас -->
+<main class="workspace-core">
+    
+    <!-- ТЕАТР ТАЙМЕРА -->
+    <div class="clock-theater-stage">
+        <div id="displayDigits" class="huge-digits">00:00:00</div>
+    </div>
+
+    <!-- ИНТЕРФЕЙС УПРАВЛЕНИЯ -->
+    <div class="action-hub-grid">
+        <button id="startBtn" class="btn-ux-core btn-style-start" onclick="triggerStartResetWorkflow()">
+            <span id="startBtnText">Начать сессию</span>
+            <span id="startBtnSub" class="btn-ux-subtext">запустить счетчик</span>
+        </button>
+        
+        <button id="pauseBtn" class="btn-ux-core btn-style-pause" onclick="triggerPauseWorkflow()" disabled>
+            Пауза
+        </button>
+        
+        <button id="stopBtn" class="btn-ux-core btn-style-stop" onclick="triggerStopWorkflow()" disabled>
+            Завершить
+        </button>
+    </div>
+
+    <!-- ИНФОРМАЦИОННАЯ ПАНЕЛЬ ЛОГОВ -->
+    <div class="dashboard-footer-system">
+        
+        <div id="consoleContainer" class="console-architecture">
+            <div class="console-interactive-header" onclick="toggleConsoleFolding(event)">
+                <div class="console-title-area">
+                    <svg class="console-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <!-- Текст обернут в span для замены костылем в мобильном портрете -->
+                    <span class="console-title-text">Метрики и логирование</span>
+                </div>
+                <div class="console-action-bar">
+                    <button class="btn-console-util" onclick="executeLogCopy(event)">Копировать</button>
+                    <button class="btn-console-util" onclick="executeLogExport(event)">Экспорт</button>
+                    <!-- Кнопка Дзен для ландшафтных мобильных дисплеев (в обычном режиме) -->
+                    <button class="btn-console-util inline-zen-trigger" onclick="toggleZenMode(event)">Спрятать</button>
+                </div>
+            </div>
+            <div id="consoleViewport" class="console-viewport">
+                <!-- Сюда направляется поток данных -->
+            </div>
+        </div>
+
+        <!-- Системный трей настроек под консолью -->
+        <div class="settings-bottom-tray">
+            <div class="tray-element-group">
+                <span>Форматирование:</span>
+                <select id="timeFormatPresetSelector" class="select-architectural" onchange="applyTimeFormatChange(this.value)">
+                    <option value="ISO">ГГГГ-ММ-ДД ЧЧ:ММ:СС</option>
+                    <option value="RU">ДД.ММ.ГГГГ ЧЧ:ММ:СС</option>
+                    <option value="US">ММ/ДД/ГГГГ ЧЧ:ММ:СС AM/PM</option>
+                </select>
+            </div>
+            <div class="tray-element-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="autosaveReportToggle" style="cursor: pointer;"> Авто-экспорт при завершении
+                </label>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- БЛОК ТРИГГЕРА ДЗЕН-РЕЖИМА -->
+<!-- На десктопе он в правом нижнем углу. На мобильном в портрете - прямоугольный снизу. -->
+<footer class="zen-trigger-anchor">
+    <button id="zenModeMainBtn" class="btn-zen-mode" onclick="toggleZenMode(event)">Спрятать элементы управления</button>
+</footer>
+
+<!-- ==========================================================================
+     8. ПРОДВИНУТЫЙ ИНЖЕНЕРНЫЙ СКРИПТ УПРАВЛЕНИЯ (CORE KERNEL ENGINE)
+     ========================================================================== */ -->
+<script>
+    /**
+     * @fileoverview Архитектурное ядро логики таймера и логирования.
+     * Реализует паттерн State Machine для переключения состояний,
+     * управляет DOM-мутациями и сохраняет контекст пользователя в Cookies/LocalStorage.
+     */
+
+    // ==========================================================================
+    // ПУЛЫ МИКРОКОПИРАЙТИНГА ДЛЯ ПОДДЕРЖАНИЯ ЭМПАТИИ И ВАРИАТИВНОСТИ ЛОГОВ
+    // Объем массивов значительно увеличен для создания эффекта "живого" интерфейса.
+    // ==========================================================================
+    const POOL_WORK_GREETINGS = [
+        "Приятной работы! Фокус-сессия активирована.",
+        "Время создавать ценность. Продуктивного дня!",
+        "Глубокое погружение началось. Ни на что не отвлекайтесь.",
+        "Поехали делать великие дела!",
+        "Фокус-сессия успешно запущена. Отличного спринта.",
+        "Режим созидания включен. Полноэкранный фокус на задачах.",
+        "Чистый разум, глубокая концентрация. Приятного воркфлоу!",
+        "Вы на пике продуктивности. Погнали!",
+        "Время креативить и созидать. Продуктивного сеанса.",
+        "Рабочий спринт начался. Уберите внешние раздражители.",
+        "Инициализация успешна. Пусть работается легко.",
+        "Новая сессия, новые достижения. Удачи в работе!",
+        "Концентрация на максимуме. Система отслеживает ваш прогресс.",
+        "Добро пожаловать в поток. Ваше время пошло.",
+        "Все системы в норме. Фокус-режим активен.",
+        "Архитектура сознания перестроена на созидание.",
+        "Движок запущен. Время генерировать идеи.",
+        "Защита от прерываний активирована. Успешного кодинга.",
+        "Ваш персональный квант времени стартовал.",
+        "Режим 'Глубокая Работа' инициирован без ошибок.",
+        "Давайте создадим сегодня что-то выдающееся.",
+        "Внимание сфокусировано. Таймер ведет отсчет.",
+        "Спринт запущен. Держите ритм.",
+        "Система готова. Запускаем поток сознания.",
+        "Поток активирован. Ваше внимание - ваш главный ресурс.",
+        "Интерфейс чист, ум ясен. Приступаем.",
+        "Включаем режим максимальной производительности.",
+        "Пусть эта сессия будет самой результативной за день.",
+        "Настраиваем нейронные связи на решение сложных задач.",
+        "Вы в зоне. Никаких уведомлений, только рабочие задачи."
+    ];
+
+    const POOL_REST_MESSAGES = [
+        "Хорошего перерыва! Время сделать глоток воды.",
+        "Отличный повод размяться. Отдыхайте!",
+        "Небольшая перезагрузка. Приятного перекуса или чаепития.",
+        "Пауза активирована. Дайте глазам отдохнуть.",
+        "Хорошего перекура! Возвращайтесь с новыми силами.",
+        "Приятного аппетита, если решили перекусить!",
+        "Отличный момент для микро-разминки шеи и спины.",
+        "Тайм-аут принят. Сделайте глубокий вдох-выдох.",
+        "Отдых — важная часть работы. Хорошей паузы.",
+        "Фокус временно приостановлен. Время выпить кофе.",
+        "Режим паузы. Посмотрите в окно на отдаленные объекты.",
+        "Время отпустить мысли. Процессор отдыхает.",
+        "Сохраняем энергию. Возвращайтесь, как будете готовы.",
+        "Короткая пауза для восстановления ресурса.",
+        "Сессия на холде. Наслаждайтесь моментом тишины.",
+        "Разрядка систем. Сделайте легкую гимнастику.",
+        "Перерыв подтвержден. Увлажните глаза.",
+        "Выход из потока. Время на восстановление.",
+        "Двигатель остывает. Отвлекитесь от экрана.",
+        "Смена контекста. Подумайте о чем-то отвлеченном.",
+        "Переведите дыхание. Работа никуда не убежит.",
+        "Сброс напряжения. Встаньте и пройдитесь.",
+        "Пауза зарегистрирована. Возвращайтесь с чистым разумом.",
+        "Микроотдых запущен. Полезно для сосудов и зрения.",
+        "Дефрагментация мыслей. Отличный момент для рефлексии."
+    ];
+
+    // ==========================================================================
+    // ВНУТРЕННЕЕ СОСТОЯНИЕ СИСТЕМЫ И ПЕРЕМЕННЫЕ ХРОНОМЕТРАЖА
+    // ==========================================================================
+    let coreEngineSeconds = 0;              // Главный счетчик секунд
+    let coreRuntimeInterval = null;         // Идентификатор setInterval
+    let currentSystemState = "STOPPED";     // Машина состояний: STARTED, PAUSED, STOPPED
+    
+    // Метрики сессии
+    let datetimeSessionStart = null;        // Точка входа
+    let datetimeSessionEnd = null;          // Точка выхода
+    let metricPauseCounter = 0;             // Количество отвлечений
+    let metricPauseSumSeconds = 0;          // Общее время простоя
+    let metricPauseLastTimestamp = null;    // Метка времени последней паузы
+
+    // ==========================================================================
+    // СЛУЖЕБНЫЕ УТИЛИТЫ И STORAGE-ИНТЕРФЕЙСЫ
+    // ==========================================================================
+
+    /**
+     * Чтение значения из Cookie по имени
+     * @param {string} name - Имя искомого ключа
+     * @returns {string|undefined} Значение или undefined
+     */
+    function readCookieStorage(name) {
+        let pattern = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"));
+        return pattern ? decodeURIComponent(pattern[1]) : undefined;
+    }
+
+    /**
+     * Запись значения в Cookie на 30 дней
+     * @param {string} name - Имя ключа
+     * @param {string} value - Записываемое значение
+     */
+    function writeCookieStorage(name, value) {
+        let date = new Date();
+        date.setTime(date.getTime() + (30 * 24 * 60 * 60 * 1000));
+        document.cookie = name + "=" + encodeURIComponent(value) + ";path=/;expires=" + date.toGMTString();
+    }
+
+    // ==========================================================================
+    // ИНИЦИАЛИЗАЦИЯ И ВОССТАНОВЛЕНИЕ КОНТЕКСТА ПОЛЬЗОВАТЕЛЯ
+    // ==========================================================================
+    function runCoreSystemInitialization() {
+        
+        // 1. Восстановление формата времени
+        const storedFormat = readCookieStorage("app_time_format_preset") || "ISO";
+        const formatSelector = document.getElementById("timeFormatPresetSelector");
+        if (formatSelector) formatSelector.value = storedFormat;
+
+        // 2. Восстановление переключателя авто-экспорта
+        const storedAutosave = readCookieStorage("app_autosave_log_flag");
+        const checkboxNode = document.getElementById("autosaveReportToggle");
+        if (checkboxNode) {
+            if (storedAutosave !== undefined) {
+                checkboxNode.checked = (storedAutosave === "true");
+            } else {
+                // Эвристика: на десктопе авто-экспорт включен по умолчанию, на мобильных - выключен
+                checkboxNode.checked = !/Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
+            }
+            checkboxNode.addEventListener("change", (e) => {
+                writeCookieStorage("app_autosave_log_flag", e.target.checked.toString());
+            });
+        }
+
+        // 3. Восстановление темы оформления
+        const storedTheme = readCookieStorage("app_theme_preset") || "night";
+        document.documentElement.setAttribute("data-theme", storedTheme);
+        clearActiveSegmentsInGroup("themeSegmentGroup");
+        const themeBtnTarget = Array.from(document.querySelectorAll("#themeSegmentGroup .segment-btn"))
+            .find(b => b.getAttribute("onclick").includes(storedTheme));
+        if (themeBtnTarget) themeBtnTarget.classList.add("active-segment");
+
+        // 4. Восстановление шрифтового профиля
+        const storedFont = readCookieStorage("app_font_preset") || "roboto";
+        document.documentElement.setAttribute("data-font", storedFont);
+        clearActiveSegmentsInGroup("fontSegmentGroup");
+        const fontBtnTarget = Array.from(document.querySelectorAll("#fontSegmentGroup .segment-btn"))
+            .find(b => b.getAttribute("onclick").includes(storedFont));
+        if (fontBtnTarget) fontBtnTarget.classList.add("active-segment");
+
+        // 5. Восстановление состояния консоли (свернута/развернута)
+        const isMobilePortrait = window.innerWidth <= 768 && window.innerHeight > window.innerWidth;
+        const storedConsoleState = localStorage.getItem("app_console_folded");
+        const container = document.getElementById("consoleContainer");
+        
+        if (container) {
+            if (storedConsoleState === "true") {
+                container.classList.add("collapsed");
+            } else if (storedConsoleState === "false") {
+                container.classList.remove("collapsed");
+            } else {
+                // Дефолтная маршрутизация: на мобилке в портрете сворачиваем, иначе - разворачиваем
+                if (isMobilePortrait) {
+                    container.classList.add("collapsed");
+                } else {
+                    container.classList.remove("collapsed");
+                }
+            }
+        }
+
+        // 6. Подписка на изменения ориентации экрана
+        runMobileOrientationAudit();
+        window.addEventListener("resize", runMobileOrientationAudit);
+        
+        // 7. Стартовая инициализация таймера DOM
+        syncClockDisplayDOM();
+    }
+
+    /**
+     * Сбрасывает активные классы сегментных кнопок
+     */
+    function clearActiveSegmentsInGroup(groupId) {
+        const targetingButtons = document.querySelectorAll(`#${groupId} .segment-btn`);
+        targetingButtons.forEach(btn => btn.classList.remove("active-segment"));
+    }
+
+    // ==========================================================================
+    // ОБРАБОТЧИКИ НАСТРОЕК (THEMING & FONTS)
+    // ==========================================================================
+    function mutateTimerTheme(themeName, buttonElement) {
+        document.documentElement.setAttribute("data-theme", themeName);
+        clearActiveSegmentsInGroup("themeSegmentGroup");
+        if (buttonElement) buttonElement.classList.add("active-segment");
+        writeCookieStorage("app_theme_preset", themeName);
+        appendConsoleLine(`Цветовой профиль изменен на: ${themeName.toUpperCase()}`, "type-system");
+    }
+
+    function mutateTimerFont(fontName, buttonElement) {
+        document.documentElement.setAttribute("data-font", fontName);
+        clearActiveSegmentsInGroup("fontSegmentGroup");
+        if (buttonElement) buttonElement.classList.add("active-segment");
+        writeCookieStorage("app_font_preset", fontName);
+        appendConsoleLine(`Шрифтовая гарнитура изменена на: ${fontName.toUpperCase()}`, "type-system");
+    }
+
+    function applyTimeFormatChange(selectorValue) {
+        writeCookieStorage("app_time_format_preset", selectorValue);
+        appendConsoleLine(`Паттерн форматирования времени обновлен: ${selectorValue}`, "type-system");
+    }
+
+    // ==========================================================================
+    // УПРАВЛЕНИЕ UI-КОМПОНЕНТАМИ (КОНСОЛЬ И ДЗЕН-РЕЖИМ)
+    // ==========================================================================
+    
+    /**
+     * Сворачивает или разворачивает консоль логов
+     */
+    function toggleConsoleFolding(event) {
+        const box = document.getElementById("consoleContainer");
+        if (!box) return;
+        box.classList.toggle("collapsed");
+        localStorage.setItem("app_console_folded", box.classList.contains("collapsed").toString());
+    }
+
+    /**
+     * Аудит ориентации для автоматического сворачивания консоли в ландшафте
+     */
+    function runMobileOrientationAudit() {
+        const container = document.getElementById("consoleContainer");
+        if (!container) return;
+        
+        if (window.innerHeight <= 500 && window.innerWidth > window.innerHeight) {
+            // Принудительно сворачиваем консоль в ландшафте, если она открыта
+            if (!container.classList.contains("collapsed")) {
+                container.classList.add("collapsed");
+            }
+        }
+    }
+
+    /**
+     * Активация/Деактивация режима фокусировки без визуального мусора
+     */
+    function toggleZenMode(event) {
+        if(event) event.stopPropagation(); // Предотвращаем всплытие (особенно из консоли)
+        
+        const activeState = document.documentElement.getAttribute("data-zen") === "true";
+        const targetState = !activeState;
+        
+        // Меняем глобальный флаг
+        document.documentElement.setAttribute("data-zen", targetState.toString());
+        
+        const mainZenBtn = document.getElementById("zenModeMainBtn");
+        if (targetState) {
+            if (mainZenBtn) mainZenBtn.innerText = "Показать элементы управления";
+            appendConsoleLine("Активирован Дзен-режим. Элементы интерфейса скрыты.", "type-system");
+        } else {
+            if (mainZenBtn) mainZenBtn.innerText = "Спрятать элементы управления";
+            appendConsoleLine("Дзен-режим деактивирован. Интерфейс восстановлен.", "type-system");
+        }
+    }
+
+    // ==========================================================================
+    // ПРОЦЕССОРЫ ВРЕМЕНИ И ФОРМАТИРОВАНИЯ
+    // ==========================================================================
+
+    /**
+     * Генерирует текущую метку времени в нужном формате
+     * @param {string} targetFormat - "DISPLAY" (для логов) или "FILE_NAME" (для экспорта)
+     */
+    function evaluateCurrentTimestamp(targetFormat = "DISPLAY") {
+        const dateObj = new Date();
+        const leadingZero = (v) => v.toString().padStart(2, '0');
+        
+        const yr = dateObj.getFullYear();
+        const mo = leadingZero(dateObj.getMonth() + 1);
+        const dy = leadingZero(dateObj.getDate());
+        
+        let hr = dateObj.getHours();
+        const mi = leadingZero(dateObj.getMinutes());
+        const sc = leadingZero(dateObj.getSeconds());
+
+        if (targetFormat === "FILE_NAME") {
+            return `${yr}-${mo}-${dy}_${leadingZero(hr)}-${mi}-${sc}`;
+        }
+
+        const selector = document.getElementById("timeFormatPresetSelector");
+        const internalPreset = selector ? selector.value : "ISO";
+        
+        if (internalPreset === "ISO") {
+            return `${yr}-${mo}-${dy} ${leadingZero(hr)}:${mi}:${sc}`;
+        } else if (internalPreset === "RU") {
+            return `${dy}.${mo}.${yr} ${leadingZero(hr)}:${mi}:${sc}`;
+        } else if (internalPreset === "US") {
+            const ampm = hr >= 12 ? 'PM' : 'AM';
+            hr = hr % 12;
+            hr = hr ? hr : 12; // 0 часов становится 12
+            return `${mo}/${dy}/${yr} ${leadingZero(hr)}:${mi}:${sc} ${ampm}`;
+        }
+        return `${yr}-${mo}-${dy} ${leadingZero(hr)}:${mi}:${sc}`;
+    }
+
+    /**
+     * Конвертирует секунды в строку HH:MM:SS
+     */
+    function stringifySecondsToTimecode(inputSeconds) {
+        const hours = Math.floor(inputSeconds / 3600);
+        const minutes = Math.floor((inputSeconds % 3600) / 60);
+        const seconds = inputSeconds % 60;
+        const leadingZero = (v) => v.toString().padStart(2, '0');
+        return `${leadingZero(hours)}:${leadingZero(minutes)}:${leadingZero(seconds)}`;
+    }
+
+    /**
+     * Вставляет новую строку в консоль
+     */
+    function appendConsoleLine(messagePayload, styleClassName = "type-system") {
+        const viewport = document.getElementById("consoleViewport");
+        if (!viewport) return;
+        
+        const entryRow = document.createElement("div");
+        entryRow.className = `log-line ${styleClassName}`;
+        entryRow.innerText = `[${evaluateCurrentTimestamp("DISPLAY")}] ${messagePayload}`;
+        
+        viewport.appendChild(entryRow);
+        
+        // Автоматическая прокрутка логов вниз
+        viewport.scrollTop = viewport.scrollHeight;
+    }
+
+    /**
+     * Синхронизирует DOM-элемент циферблата с внутренней переменной
+     */
+    function syncClockDisplayDOM() {
+        const display = document.getElementById("displayDigits");
+        if (display) {
+            display.innerText = stringifySecondsToTimecode(coreEngineSeconds);
+        }
+    }
+
+    // ==========================================================================
+    // БИЗНЕС-ЛОГИКА: УПРАВЛЕНИЕ ХОДОМ ТАЙМЕРА
+    // ==========================================================================
+    
+    /**
+     * Главный маршрутизатор кнопки "Начать / Сброс"
+     */
+    function triggerStartResetWorkflow() {
+        if (currentSystemState === "STOPPED") {
+            executeSessionStart();
+        } else {
+            // Если сессия идет, кнопка работает как жесткий сброс
+            if (confirm("Вы уверены, что хотите сбросить секундомер? Текущие метрики будут потеряны.")) {
+                executeImmediateEngineReset();
+            }
+        }
+    }
+
+    /**
+     * Инициализация новой сессии
+     */
+    function executeSessionStart() {
+        currentSystemState = "STARTED";
+        datetimeSessionStart = new Date();
+        metricPauseCounter = 0;
+        metricPauseSumSeconds = 0;
+        metricPauseLastTimestamp = null;
+
+        // Трансформация UI
+        const startBtn = document.getElementById("startBtn");
+        startBtn.classList.add("state-resetting");
+        document.getElementById("startBtnText").innerText = "Сбросить сессию";
+        document.getElementById("startBtnSub").innerText = "обнулить показатели";
+        
+        document.getElementById("pauseBtn").disabled = false;
+        document.getElementById("stopBtn").disabled = false;
+
+        const randomGreeting = POOL_WORK_GREETINGS[Math.floor(Math.random() * POOL_WORK_GREETINGS.length)];
+        appendConsoleLine(randomGreeting, "type-work");
+
+        // Использование Date.now() для защиты от дрифта setInterval
+        let calculatedBaselineTime = Date.now() - (coreEngineSeconds * 1000);
+        coreRuntimeInterval = setInterval(() => {
+            coreEngineSeconds = Math.floor((Date.now() - calculatedBaselineTime) / 1000);
+            syncClockDisplayDOM();
+        }, 250);
+    }
+
+    /**
+     * Маршрутизатор Паузы и Возобновления
+     */
+    function triggerPauseWorkflow() {
+        const pauseBtn = document.getElementById("pauseBtn");
+
+        if (currentSystemState === "STARTED") {
+            // УХОД НА ПАУЗУ
+            currentSystemState = "PAUSED";
+            clearInterval(coreRuntimeInterval);
+            metricPauseCounter++;
+            metricPauseLastTimestamp = Date.now();
+
+            pauseBtn.innerText = "Продолжить";
+            pauseBtn.classList.add("resume-state");
+
+            const randomPauseMsg = POOL_REST_MESSAGES[Math.floor(Math.random() * POOL_REST_MESSAGES.length)];
+            appendConsoleLine(randomPauseMsg, "type-rest");
+
+        } else if (currentSystemState === "PAUSED") {
+            // ВОЗВРАТ К РАБОТЕ
+            currentSystemState = "STARTED";
+            if (metricPauseLastTimestamp) {
+                metricPauseSumSeconds += Math.floor((Date.now() - metricPauseLastTimestamp) / 1000);
+            }
+
+            pauseBtn.innerText = "Пауза";
+            pauseBtn.classList.remove("resume-state");
+            appendConsoleLine("Возврат к выполнению задач. Фокус-сессия возобновлена.", "type-work");
+
+            // Перекалибровка таймера
+            let calculatedBaselineTime = Date.now() - (coreEngineSeconds * 1000);
+            coreRuntimeInterval = setInterval(() => {
+                coreEngineSeconds = Math.floor((Date.now() - calculatedBaselineTime) / 1000);
+                syncClockDisplayDOM();
+            }, 250);
+        }
+    }
+
+    /**
+     * Завершение сессии и компиляция отчета
+     */
+    function triggerStopWorkflow() {
+        clearInterval(coreRuntimeInterval);
+        currentSystemState = "STOPPED";
+        datetimeSessionEnd = new Date();
+
+        // Если останавливаем прямо из паузы, нужно досчитать время этой последней паузы
+        if (metricPauseLastTimestamp && document.getElementById("pauseBtn").classList.contains("resume-state")) {
+            metricPauseSumSeconds += Math.floor((Date.now() - metricPauseLastTimestamp) / 1000);
+        }
+
+        appendConsoleLine("Сессия остановлена. Генерация итоговой аналитической сводки...", "type-system");
+
+        // Утилита для рендера времени внутри отчета
+        const transformDateToHoursMinutes = (targetDateObj) => {
+            const pad = (v) => v.toString().padStart(2, '0');
+            return `${pad(targetDateObj.getHours())}:${pad(targetDateObj.getMinutes())}:${pad(targetDateObj.getSeconds())}`;
+        };
+
+        const cumulativeSessionSeconds = Math.floor((datetimeSessionEnd - datetimeSessionStart) / 1000);
+
+        // Инъекция карточки с итогами
+        const viewport = document.getElementById("consoleViewport");
+        const scorecardWrapper = document.createElement("div");
+        scorecardWrapper.className = "summary-scorecard";
+        
+        scorecardWrapper.innerHTML = `
+            <div class="summary-scorecard-title">📊 Итоговый отчет по сессии:</div>
+            <div class="summary-scorecard-node">Интервал: с ${transformDateToHoursMinutes(datetimeSessionStart)} до ${transformDateToHoursMinutes(datetimeSessionEnd)}</div>
+            <div class="summary-scorecard-node">Грязное время (нахождение на месте): ${stringifySecondsToTimecode(cumulativeSessionSeconds)}</div>
+            <div class="summary-scorecard-node">Чистое рабочее время (интенсивный фокус): ${stringifySecondsToTimecode(coreEngineSeconds)}</div>
+            <div class="summary-scorecard-node">Индекс отвлечений (зафиксировано пауз): ${metricPauseCounter}</div>
+            <div class="summary-scorecard-node">Суммарное время перерывов: ${stringifySecondsToTimecode(metricPauseSumSeconds)}</div>
+        `;
+        
+        if (viewport) {
+            viewport.appendChild(scorecardWrapper);
+            viewport.scrollTop = viewport.scrollHeight;
+        }
+
+        // Авто-экспорт файла
+        const toggleNode = document.getElementById("autosaveReportToggle");
+        if (toggleNode && toggleNode.checked) {
+            executeLogExport(null);
+        }
+
+        // Откат кнопок в начальное состояние
+        const startBtn = document.getElementById("startBtn");
+        startBtn.classList.remove("state-resetting");
+        document.getElementById("startBtnText").innerText = "Начать сессию";
+        document.getElementById("startBtnSub").innerText = "запустить счетчик";
+        
+        const pauseBtn = document.getElementById("pauseBtn");
+        pauseBtn.innerText = "Пауза";
+        pauseBtn.classList.remove("resume-state");
+        pauseBtn.disabled = true;
+        
+        document.getElementById("stopBtn").disabled = true;
+    }
+
+    /**
+     * Принудительное стирание метрик без сохранения отчета
+     */
+    function executeImmediateEngineReset() {
+        clearInterval(coreRuntimeInterval);
+        currentSystemState = "STOPPED";
+        
+        coreEngineSeconds = 0;
+        metricPauseCounter = 0;
+        metricPauseSumSeconds = 0;
+        metricPauseLastTimestamp = null;
+        
+        syncClockDisplayDOM();
+        appendConsoleLine("Текущая сессия полностью аннулирована. Таймер жестко обнулен.", "type-system");
+
+        // Откат кнопок
+        const startBtn = document.getElementById("startBtn");
+        startBtn.classList.remove("state-resetting");
+        document.getElementById("startBtnText").innerText = "Начать сессию";
+        document.getElementById("startBtnSub").innerText = "запустить счетчик";
+        
+        const pauseBtn = document.getElementById("pauseBtn");
+        pauseBtn.innerText = "Пауза";
+        pauseBtn.classList.remove("resume-state");
+        pauseBtn.disabled = true;
+        
+        document.getElementById("stopBtn").disabled = true;
+    }
+
+    // ==========================================================================
+    // ФУНКЦИИ ВЗАИМОДЕЙСТВИЯ С БУФЕРОМ ОБМЕНА И ФАЙЛОВОЙ СИСТЕМОЙ
+    // ==========================================================================
+
+    function executeLogCopy(event) {
+        if(event) event.stopPropagation(); 
+        
+        const viewport = document.getElementById("consoleViewport");
+        if (!viewport) return;
+        
+        const textualData = viewport.innerText;
+        if (!textualData.trim()) {
+            alert("Консоль пуста. Нечего копировать.");
+            return;
+        }
+
+        navigator.clipboard.writeText(textualData).then(() => {
+            alert("Журнал консоли и аналитические сводки успешно скопированы в буфер обмена.");
+        }).catch(err => {
+            console.error('Ошибка копирования в буфер обмена', err);
+            alert("Произошла ошибка при доступе к буферу обмена вашего устройства.");
+        });
+    }
+
+    function executeLogExport(event) {
+        if(event) event.stopPropagation();
+        
+        const viewport = document.getElementById("consoleViewport");
+        if (!viewport) return;
+        
+        const logsPayload = viewport.innerText;
+        if (!logsPayload.trim()) return;
+
+        // Формирование Blob-объекта
+        const reportHeader = `=== WORK TIMER ARCHITECTURAL REPORT ===\nДата экспорта: ${evaluateCurrentTimestamp("DISPLAY")}\n\n`;
+        const dynamicBlob = new Blob([reportHeader + logsPayload], { type: "text/plain;charset=utf-8" });
+        
+        // Создание виртуальной ссылки для скачивания
+        const temporaryLink = document.createElement("a");
+        temporaryLink.href = URL.createObjectURL(dynamicBlob);
+        temporaryLink.download = `work_session_report_${evaluateCurrentTimestamp("FILE_NAME")}.txt`;
+        
+        // Эмуляция клика
+        document.body.appendChild(temporaryLink);
+        temporaryLink.click();
+        
+        // Очистка памяти
+        document.body.removeChild(temporaryLink);
+        URL.revokeObjectURL(temporaryLink.href);
+    }
+
+    // ==========================================================================
+    // ЗАПУСК ЖИЗНЕННОГО ЦИКЛА ПРИЛОЖЕНИЯ
+    // ==========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+        runCoreSystemInitialization();
+    });
+</script>
+</body>
+</html>
